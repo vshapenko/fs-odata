@@ -7,10 +7,8 @@ open Microsoft.Data.OData
 open Microsoft.Data.Edm
 open System.Collections.Generic
 open Types
-module ODataRequests=
+module OData=
  
- let createMetadataUri uri =uri|>Uri.createRelative  "$metadata"
-
  let createOdataItem (data:IDictionary<string,obj>)=
       let entry=new ODataEntry()
       let properties=data|>Seq.map(fun x-> let property= new ODataProperty()
@@ -40,28 +38,6 @@ module ODataRequests=
     }
     res|>List.ofSeq
 
- let readMetadataRaw (response:HttpWebResponse)=
-   let message= ClientResponseMessage(response) :>IODataResponseMessage
-   let reader=new ODataMessageReader(message)
-   reader.ReadMetadataDocument()
-
- let createMeadataProperty (keys:Set<string>) (p:IEdmProperty)=
-   {Id=p.Name;PropertyName=p.Name;PropertyType=p.Type.PrimitiveKind().ToString();IsKeyProperty=keys.Contains(p.Name);IsMandatory=p.Type.IsNullable}
-
- let createMetadataType (entitySet:IEdmEntitySet)=
-   let entityType=entitySet.ElementType
-   let keys=entityType.DeclaredKey|>Seq.map (fun x->x.Name)|>Set.ofSeq
-   let properties=entityType.Properties()
-                  |>Seq.map (createMeadataProperty keys)
-                  |>List.ofSeq
-   {Id=entityType.Name;Properties=properties;Name=entityType.Name}
-    
- let getCustomMetadata (metadata:IEdmModel)=
-   metadata.EntityContainers()
-   |>Seq.map (fun x->x.EntitySets())
-   |>Seq.concat
-   |>Seq.map createMetadataType
-
  let writeDataToRequest (data:IDictionary<string,obj>) entitySet (request:HttpWebRequest)=
     let entry=createOdataItem data
     let message= ClientRequestMessage(request):>IODataRequestMessage
@@ -90,22 +66,22 @@ module ODataRequests=
      |>requestFunc
      |>HttpRequest.build [fillPayload settings;fillAuthType settings] 
 
- let getMetadata (settings:ODataSettings)=
-    settings
-    |> createRequestFromSettings HttpRequest.Get
-    |> processRequestWithDefaultErrorHandlers readMetadataRaw 
-
- let processDataEntry requestFunc (settings:ODataSettings) (data:IDictionary<string,obj>) metadata=
+ let private processDataEntry requestFunc (settings:ODataSettings) (data:IDictionary<string,obj>) metadata=
     settings
     |>createRequestFromSettings requestFunc
     |>writeDataToRequest  data (getEntitySet metadata settings.Collection)
-    |>processRequestWithDefaultErrorHandlers (fun x->())
+    |>HttpRequest.sendDefault(fun x->())
 
- let getData (settings:ODataSettings)=
+ let Get (settings:ODataSettings)=
     settings
     |>createRequestFromSettings HttpRequest.Get
-    |>processRequestWithDefaultErrorHandlers readEntries
+    |>HttpRequest.sendDefault readEntries
 
+ let Post settings data metadata=processDataEntry HttpRequest.Post settings data metadata
+ let Put settings data metadata=processDataEntry HttpRequest.Put settings data metadata
+ let Patch settings data metadata=processDataEntry HttpRequest.Patch metadata
+
+ let Metadata (settings:ODataSettings) = Metadata.get settings.Uri (fillAuthType settings>>fillPayload settings) 
 
     
 

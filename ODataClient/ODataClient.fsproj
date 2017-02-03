@@ -55,7 +55,8 @@
     <Compile Include="Uri.fs" />
     <Compile Include="HttpRequest.fs" />
     <Compile Include="Types.fs" />
-    <Compile Include="ODataRequests.fs" />
+    <Compile Include="Metadata.fs" />
+    <Compile Include="OData.fs" />
     <Compile Include="Facade.fs" />
     <None Include="Script.fsx" />
     <Content Include="packages.config" />

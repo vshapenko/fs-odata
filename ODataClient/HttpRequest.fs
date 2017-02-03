@@ -10,7 +10,7 @@
    let bytes=Encoding.ASCII.GetBytes(str)
    Convert.ToBase64String(bytes)
 
-  let create httpMethod (url:Uri)= 
+  let private create httpMethod (url:Uri)= 
      let request=WebRequest.CreateHttp(url)
      request.Method<-httpMethod
      request
@@ -19,6 +19,7 @@
   let Post uri =create "POST" uri
   let Put uri=create "PUT" uri
   let Delete uri=create "DELETE" uri
+  let Patch uri=create "PATCH" uri
 
   let build  builders (request:HttpWebRequest)=
       builders|>Seq.fold(fun  r f->f r) request
@@ -44,7 +45,7 @@
     printfn "Server status code: %A , error '%A' " (ex.Response:?>HttpWebResponse).StatusCode ex.Message
     None
 
-  let processRequest fatalHandler errorHandler successHandler (request:HttpWebRequest)=
+  let send fatalHandler errorHandler successHandler (request:HttpWebRequest)=
      try
       let response=request.GetResponse():?>HttpWebResponse
       Some (successHandler response)
@@ -52,5 +53,5 @@
       | :? WebException as ex->errorHandler ex
       | :? Exception as ex->fatalHandler ex 
 
-  let processRequestWithDefaultErrorHandlers successHandler request = processRequest fatalErrorHandler serverErrorHandler successHandler request
+  let sendDefault successHandler request = send fatalErrorHandler serverErrorHandler successHandler request
 
