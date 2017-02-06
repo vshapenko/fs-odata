@@ -21,12 +21,6 @@ module Types=
 
  type ODataSettings={Uri:string;UserName:string;Password:string;AuthenticationType:AuthenticationType;PayloadFormat:PayloadFormat;Collection:string;PageSize:int option;Filter:string;Timeout:int option}
  
- type IODataClient=
-      abstract member GetEntries: unit->IEnumerable<IDictionary<string,obj>>
-      abstract member GetMetadata:unit->IEdmModel
-      abstract member ClearMetadata:unit->unit
-      abstract member WriteEntries:IEnumerable<IDictionary<string,obj>>->unit
-
  type ClientResponseMessage (webResponse:HttpWebResponse)=
        do 
         if webResponse=null then raise (ArgumentNullException("webResponse"))

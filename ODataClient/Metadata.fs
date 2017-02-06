@@ -5,7 +5,7 @@ open System.Net
 open System.Collections.Generic
 open Types
 module Metadata=
-  let Cache=new Dictionary<string,IEdmModel>()
+  let Cache=new Dictionary<string,IEdmModel option>()
   let private readMetadataRaw (response:HttpWebResponse)=
        let message= ClientResponseMessage(response) :>IODataResponseMessage
        let reader=new ODataMessageReader(message)
@@ -22,19 +22,33 @@ module Metadata=
                       |>List.ofSeq
        {Id=entityType.Name;Properties=properties;Name=entityType.Name}
     
-  let toTyped (metadata:IEdmModel)=
-       metadata.EntityContainers()
-       |>Seq.map (fun x->x.EntitySets())
-       |>Seq.concat
-       |>Seq.map createMetadataType
+  let toTyped (metadata:IEdmModel option)=
+       match metadata with
+       |Some m->m.EntityContainers()
+                |>Seq.map (fun x->x.EntitySets())
+                |>Seq.concat
+                |>Seq.map createMetadataType
+       |None->Seq.empty
+      
 
-  let get url requestBuilder=
+  let addToCache url metadata=Cache.Add(url,metadata)
+                              metadata
+  let removeFromCache url =Cache.Remove(url)
+
+  let getFromCache url=
+    match Cache.TryGetValue(url) with
+     |true,x->x
+     |_->None
+
+  let get url requestBuilder=  
     url
     |> Uri.create
     |> HttpRequest.Get
     |> requestBuilder
     |> HttpRequest.sendDefault readMetadataRaw 
+
+
   
-  let addToCache url metadata=Cache.Add(url,metadata)
-  let removeFromCache url =Cache.Remove(url)
+
+                           
 

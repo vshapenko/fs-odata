@@ -22,11 +22,14 @@ module OData=
  let createDictionaryItem(item:ODataEntry)=
      item.Properties|>Seq.map (fun p-> (p.Name,p.Value))|>dict
 
- let getEntitySet (metadata:IEdmModel) collection=
-           metadata.EntityContainers()
-               |>Seq.map (fun x->x.EntitySets())
-               |>Seq.concat
-               |>Seq.find(fun x->x.Name=collection)
+ let getEntitySet (metadata:IEdmModel option) collection=
+           match metadata with
+           |Some x->x.EntityContainers()
+                   |>Seq.map (fun x->x.EntitySets())
+                   |>Seq.concat
+                   |>Seq.tryFind(fun x->x.Name=collection)
+           |None->None
+
      
  let readEntries (response:HttpWebResponse)=
     let message= ClientResponseMessage(response) :>IODataResponseMessage
@@ -41,8 +44,10 @@ module OData=
  let writeDataToRequest (data:IDictionary<string,obj>) entitySet (request:HttpWebRequest)=
     let entry=createOdataItem data
     let message= ClientRequestMessage(request):>IODataRequestMessage
-    let writer=new ODataMessageWriter(message)
-    let entryWriter=writer.CreateODataEntryWriter()
+    let writer=ODataMessageWriter(message)
+    let entryWriter= match entitySet with
+                       |Some x->writer.CreateODataEntryWriter(x)
+                       |None->writer.CreateODataEntryWriter()
     entryWriter.WriteStart(entry)
     entryWriter.WriteEnd()
     request
@@ -66,7 +71,14 @@ module OData=
      |>requestFunc
      |>HttpRequest.build [fillPayload settings;fillAuthType settings] 
 
- let private processDataEntry requestFunc (settings:ODataSettings) (data:IDictionary<string,obj>) metadata=
+ let GetMetadata (settings:ODataSettings) =  match Metadata.Cache.TryGetValue(settings.Uri) with
+                                             |true,x->x
+                                             |false,_->Metadata.get settings.Uri (fillAuthType settings>>HttpRequest.acceptXml)
+                                                       |>Metadata.addToCache settings.Uri
+  
+  
+ let private processDataEntry requestFunc (settings:ODataSettings) (data:IDictionary<string,obj>)=
+    let metadata=GetMetadata settings
     settings
     |>createRequestFromSettings requestFunc
     |>writeDataToRequest  data (getEntitySet metadata settings.Collection)
@@ -77,11 +89,11 @@ module OData=
     |>createRequestFromSettings HttpRequest.Get
     |>HttpRequest.sendDefault readEntries
 
- let Post settings data metadata=processDataEntry HttpRequest.Post settings data metadata
- let Put settings data metadata=processDataEntry HttpRequest.Put settings data metadata
- let Patch settings data metadata=processDataEntry HttpRequest.Patch metadata
+ let Post settings data =processDataEntry HttpRequest.Post settings data 
+ let Put settings data =processDataEntry HttpRequest.Put settings data  
+ let Patch settings data =processDataEntry HttpRequest.Patch settings 
 
- let Metadata (settings:ODataSettings) = Metadata.get settings.Uri (fillAuthType settings>>fillPayload settings) 
+
 
     
 
