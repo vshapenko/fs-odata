@@ -41,8 +41,8 @@ module OData=
     }
     res|>List.ofSeq
 
- let writeDataToRequest (data:IDictionary<string,obj>) entitySet (request:HttpWebRequest)=
-    let entry=createOdataItem data
+ let writeDataToRequest (dataFunc:'a->ODataEntry) entitySet data (request:HttpWebRequest) =
+    let entry=dataFunc data
     let message= ClientRequestMessage(request):>IODataRequestMessage
     let writer=ODataMessageWriter(message)
     let entryWriter= match entitySet with
@@ -63,8 +63,15 @@ module OData=
      |PayloadFormat.Xml->HttpRequest.acceptXml 
      |_->fun r->r
 
+ let fillUriParams (settings:ODataSettings) uri=
+     seq{
+         if(not (String.IsNullOrWhiteSpace(settings.Filter))) then yield Uri.addQueryParam "filter" settings.Filter
+         match settings.PageSize with
+          |Some x->yield Uri.addQueryParam "top" (x.ToString())
+          |None->()
+     }
     
- let createRequestFromSettings requestFunc settings=
+ let createRequestFromSettings requestFunc  settings=
      settings.Uri
      |>Uri.create
      |>Uri.createRelative settings.Collection
@@ -77,21 +84,22 @@ module OData=
                                                        |>Metadata.addToCache settings.Uri
   
   
- let private processDataEntry requestFunc (settings:ODataSettings) (data:IDictionary<string,obj>)=
+ let private processDataEntry requestFunc (settings:ODataSettings) dataFunc error fatal  data=
     let metadata=GetMetadata settings
     settings
     |>createRequestFromSettings requestFunc
-    |>writeDataToRequest  data (getEntitySet metadata settings.Collection)
-    |>HttpRequest.sendDefault(fun x->())
-
- let Get (settings:ODataSettings)=
+    |>writeDataToRequest dataFunc (getEntitySet metadata settings.Collection)  data 
+    |>HttpRequest.Send
+    |>fun x->(x fatal error (fun r->()))
+ 
+ let Get (settings:ODataSettings) =
     settings
     |>createRequestFromSettings HttpRequest.Get
-    |>HttpRequest.sendDefault readEntries
+    |>HttpRequest.Send
 
- let Post settings data =processDataEntry HttpRequest.Post settings data 
- let Put settings data =processDataEntry HttpRequest.Put settings data  
- let Patch settings data =processDataEntry HttpRequest.Patch settings 
+ let Post settings =processDataEntry HttpRequest.Post settings  
+ let Put settings  =processDataEntry HttpRequest.Put settings   
+ let Patch settings  =processDataEntry HttpRequest.Patch settings 
 
 
 

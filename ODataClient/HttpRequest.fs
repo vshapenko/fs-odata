@@ -39,19 +39,19 @@
 
   let private fatalErrorHandler (ex:Exception)=
     printfn "Fatal exception occured: '%A'" ex.Message
-    None
+
 
   let private serverErrorHandler (ex:WebException)=
     printfn "Server status code: %A , error '%A' " (ex.Response:?>HttpWebResponse).StatusCode ex.Message
-    None
 
-  let send fatalHandler errorHandler successHandler (request:HttpWebRequest)=
+  let private send (request:HttpWebRequest)  fatalHandler errorHandler successHandler  =
      try
       let response=request.GetResponse():?>HttpWebResponse
       Some (successHandler response)
      with
       | :? WebException as ex->errorHandler ex
-      | :? Exception as ex->fatalHandler ex 
-
-  let sendDefault successHandler request = send fatalErrorHandler serverErrorHandler successHandler request
+                               None
+      | :? Exception as ex->fatalHandler ex
+                            None 
+  let Send (request:HttpWebRequest)=send request
 
