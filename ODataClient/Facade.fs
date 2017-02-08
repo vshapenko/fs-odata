@@ -46,7 +46,7 @@ module Facade=
                                             |None->Seq.empty
                                             |Some l ->l
 
-      member this.GetMetadata()=match OData.GetMetadata settings with
+      member this.GetMetadata()=match OData.GetMetadata settings parserSettings.WebExceptionHandler parserSettings.FatalExceptionHandler  with
                                 |None->Seq.empty 
                                 |Some m->parserSettings.MetadataHandler(m)
                                  

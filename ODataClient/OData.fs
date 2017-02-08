@@ -78,14 +78,18 @@ module OData=
      |>requestFunc
      |>HttpRequest.build [fillPayload settings;fillAuthType settings] 
 
- let GetMetadata (settings:ODataSettings) =  match Metadata.Cache.TryGetValue(settings.Uri) with
+ let private readMetadataRaw (response:HttpWebResponse)=
+       let message= ClientResponseMessage(response) :>IODataResponseMessage
+       let reader=new ODataMessageReader(message)
+       reader.ReadMetadataDocument()
+ let GetMetadata (settings:ODataSettings) error fatal =  match Metadata.Cache.TryGetValue(settings.Uri) with
                                              |true,x->x
-                                             |false,_->Metadata.get settings.Uri (fillAuthType settings>>HttpRequest.acceptXml)
-                                                       |>Metadata.addToCache settings.Uri
+                                             |false,_->Metadata.get settings.Uri (fillAuthType settings>>HttpRequest.acceptXml) fatal error readMetadataRaw
+                                                      |>Metadata.addToCache settings.Uri
   
   
  let private processDataEntry requestFunc (settings:ODataSettings) dataFunc error fatal  data=
-    let metadata=GetMetadata settings
+    let metadata=GetMetadata settings error fatal
     settings
     |>createRequestFromSettings requestFunc
     |>writeDataToRequest dataFunc (getEntitySet metadata settings.Collection)  data 

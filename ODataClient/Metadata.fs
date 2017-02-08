@@ -6,10 +6,7 @@ open System.Collections.Generic
 open Types
 module Metadata=
   let Cache=new Dictionary<string,IEdmModel option>()
-  let private readMetadataRaw (response:HttpWebResponse)=
-       let message= ClientResponseMessage(response) :>IODataResponseMessage
-       let reader=new ODataMessageReader(message)
-       reader.ReadMetadataDocument()
+
 
   let private createMeadataProperty (keys:Set<string>) (p:IEdmProperty)=
        {Id=p.Name;PropertyName=p.Name;PropertyType=p.Type.PrimitiveKind().ToString();IsKeyProperty=keys.Contains(p.Name);IsMandatory=p.Type.IsNullable}
@@ -45,7 +42,7 @@ module Metadata=
     |> Uri.create
     |> HttpRequest.Get
     |> requestBuilder
-    |> HttpRequest.sendDefault readMetadataRaw 
+    |> HttpRequest.Send
 
 
   
