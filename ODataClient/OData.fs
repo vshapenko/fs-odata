@@ -3,6 +3,7 @@ open System
 open System.Net
 open System.Net.Http
 open System.Text
+
 open Microsoft.Data.OData
 open Microsoft.Data.Edm
 open System.Collections.Generic
@@ -44,7 +45,9 @@ module OData=
  let writeDataToRequest (dataFunc:'a->ODataEntry) entitySet data (request:HttpWebRequest) =
     let entry=dataFunc data
     let message= ClientRequestMessage(request):>IODataRequestMessage
-    let writer=ODataMessageWriter(message)
+    let settings=ODataMessageWriterSettings()
+    settings.
+    let writer=ODataMessageWriter(message,)
     let entryWriter= match entitySet with
                        |Some x->writer.CreateODataEntryWriter(x)
                        |None->writer.CreateODataEntryWriter()
@@ -63,18 +66,20 @@ module OData=
      |PayloadFormat.Xml->HttpRequest.acceptXml 
      |_->fun r->r
 
- let fillUriParams (settings:ODataSettings) uri=
-     seq{
-         if(not (String.IsNullOrWhiteSpace(settings.Filter))) then yield Uri.addQueryParam "filter" settings.Filter
-         match settings.PageSize with
-          |Some x->yield Uri.addQueryParam "top" (x.ToString())
-          |None->()
-     }
-    
- let createRequestFromSettings requestFunc  settings=
+ let addFilter filter uri =
+     uri|>Uri.addQueryParam "filter" filter
+
+ let addTop top uri=
+     uri|>Uri.addQueryParam "top" top
+
+ let addSkip skip uri=
+     uri|>Uri.addQueryParam "skip" skip
+   
+ let createRequestFromSettings requestFunc (uriBuilder:Uri->Uri)  settings=
      settings.Uri
      |>Uri.create
      |>Uri.createRelative settings.Collection
+     |>uriBuilder
      |>requestFunc
      |>HttpRequest.build [fillPayload settings;fillAuthType settings] 
 
@@ -88,22 +93,22 @@ module OData=
                                                       |>Metadata.addToCache settings.Uri
   
   
- let private processDataEntry requestFunc (settings:ODataSettings) dataFunc error fatal  data=
+ let private processDataEntry requestFunc builder (settings:ODataSettings) dataFunc error fatal  data=
     let metadata=GetMetadata settings error fatal
     settings
-    |>createRequestFromSettings requestFunc
+    |>createRequestFromSettings requestFunc builder
     |>writeDataToRequest dataFunc (getEntitySet metadata settings.Collection)  data 
     |>HttpRequest.Send
     |>fun x->(x fatal error (fun r->()))
  
- let Get (settings:ODataSettings) =
+ let Get (settings:ODataSettings) builder =
     settings
-    |>createRequestFromSettings HttpRequest.Get
+    |>createRequestFromSettings HttpRequest.Get builder
     |>HttpRequest.Send
 
- let Post settings =processDataEntry HttpRequest.Post settings  
- let Put settings  =processDataEntry HttpRequest.Put settings   
- let Patch settings  =processDataEntry HttpRequest.Patch settings 
+ let Post settings builder =processDataEntry HttpRequest.Post builder settings   
+ let Put settings builder  =processDataEntry HttpRequest.Put builder settings    
+ let Patch settings builder  =processDataEntry HttpRequest.Patch builder settings  
 
 
 

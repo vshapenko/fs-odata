@@ -22,10 +22,10 @@ module Facade=
        member this.InputEntryHandler with get()=getFunc InputEntryHandler
        member this.MetadataHandler with get()=getFunc MetadataHandler
 
-
+  type PullSettings={Collection:string;Filter:string;Skip:string;Top:string}
 
   type IODataClient<'TOutput,'TInput,'TMetadata>=
-      abstract member GetEntries:unit->seq<'TOutput>
+      abstract member GetEntries:PullSettings->seq<'TOutput>
       abstract member GetMetadata:unit->seq<'TMetadata>
       abstract member ClearMetadata:unit->unit
       abstract member WriteEntries :seq<'TInput>->unit
@@ -33,15 +33,15 @@ module Facade=
   type private ODataClient<'TOutput,'TInput,'TMetadata>(settings:ODataSettings,parserSettings:ParserSettings<'TOutput,'TInput,'TMetadata>)=
     
     let applyFunctors x = x parserSettings.InputEntryHandler  parserSettings.WebExceptionHandler parserSettings.FatalExceptionHandler 
-    let get()=OData.Get settings |> (fun x-> x parserSettings.FatalExceptionHandler  parserSettings.WebExceptionHandler parserSettings.ResponseHandler  ) 
-    let post=OData.Post settings  |> applyFunctors
-    let put=OData.Put settings  |> applyFunctors
-    let patch=OData.Patch settings  |> applyFunctors
+    let get uriBuilder=OData.Get settings uriBuilder |> (fun x-> x parserSettings.FatalExceptionHandler  parserSettings.WebExceptionHandler parserSettings.ResponseHandler  ) 
+    let post uriBuilder=OData.Post settings uriBuilder |> applyFunctors
+    let put uriBuilder=OData.Put settings uriBuilder |> applyFunctors
+    let patch uriBuilder=OData.Patch  uriBuilder settings  |> applyFunctors
 
 
 
     interface IODataClient<'TOutput,'TInput,'TMetadata> with
-      member this.GetEntries()=match get()
+      member this.GetEntries settings=match get()
                                              with
                                             |None->Seq.empty
                                             |Some l ->l

@@ -19,7 +19,7 @@ module Types=
      |Xml=0
      |JSON=1
 
- type ODataSettings={Uri:string;UserName:string;Password:string;AuthenticationType:AuthenticationType;PayloadFormat:PayloadFormat;Collection:string;PageSize:int option;Filter:string;Timeout:int option}
+ type ODataSettings={Uri:string;UserName:string;Password:string;AuthenticationType:AuthenticationType;PayloadFormat:PayloadFormat;Collection:string}
  
  type ClientResponseMessage (webResponse:HttpWebResponse)=
        do 

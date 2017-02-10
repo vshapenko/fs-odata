@@ -10,16 +10,16 @@
    let bytes=Encoding.ASCII.GetBytes(str)
    Convert.ToBase64String(bytes)
 
-  let private create httpMethod (url:Uri)= 
+  let private create (httpMethod:string)  (url:Uri)= 
      let request=WebRequest.CreateHttp(url)
      request.Method<-httpMethod
      request
-
-  let Get uri=create "GET" uri
-  let Post uri =create "POST" uri
-  let Put uri=create "PUT" uri
-  let Delete uri=create "DELETE" uri
-  let Patch uri=create "PATCH" uri
+  
+  let Get  uri =create "GET"  uri 
+  let Post   uri  =create "POST"    uri
+  let Put   uri =create "PUT"    uri
+  let Delete   uri=create "DELETE"    uri
+  let Patch   uri =create "PATCH"    uri 
 
   let build  builders (request:HttpWebRequest)=
       builders|>Seq.fold(fun  r f->f r) request
