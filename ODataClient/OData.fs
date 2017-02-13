@@ -10,6 +10,13 @@ open System.Collections.Generic
 open Types
 module OData=
  
+ type IODataHelper=
+      abstract member ReadEntry:string*string->obj
+      abstract member WriteEntry:string*string*string->unit
+      abstract member SetAdditionalRequestData: HttpWebRequest->HttpWebRequest
+      abstract member OnFatalErrorOccured: Exception->unit
+      abstract member OnErrorOccured:WebException*int->unit
+
  let createOdataItem (data:IDictionary<string,obj>)=
       let entry=new ODataEntry()
       let properties=data|>Seq.map(fun x-> let property= new ODataProperty()
@@ -45,9 +52,8 @@ module OData=
  let writeDataToRequest (dataFunc:'a->ODataEntry) entitySet data (request:HttpWebRequest) =
     let entry=dataFunc data
     let message= ClientRequestMessage(request):>IODataRequestMessage
-    let settings=ODataMessageWriterSettings()
-    settings.
-    let writer=ODataMessageWriter(message,)
+
+    let writer=ODataMessageWriter(message)
     let entryWriter= match entitySet with
                        |Some x->writer.CreateODataEntryWriter(x)
                        |None->writer.CreateODataEntryWriter()

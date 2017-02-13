@@ -3,7 +3,7 @@ open System
 open System.Net.Http
 open System.Net
 open System.Web
-open Builder
+open CoreTypes
 module Uri=
   let create path= Uri(path)
   let createRelative  (path:string) (uri:Uri) =Uri(uri,path)
@@ -34,17 +34,18 @@ module Uri=
                 |Multiple keys ->keys|> Seq.map (fun (k,v)->sprintf "%s=%s" k v) |>String.concat ","
      sprintf "%s(%s)" col value
    
-  let formUri request uri=
+  let formUri (request:Request) uri=
       match request with
       |List (col,top,skip,filter)->uri
                                   |>createRelative col
                                   |>addQueryParam "$top" top
                                   |>addQueryParam "$skip" skip
                                   |>addQueryParam "$filter" filter
-      |Update col->uri|>createRelative col
+      |Update (col,key)->uri|>createRelative (formCollectionPart col key)    
       |Read (col,key)->uri|>createRelative (formCollectionPart col key)                      
       |Delete (col,key)->uri|>createRelative (formCollectionPart col key) 
       |Metadata ->uri|>createRelative "$metadata"
+      |Batch _->uri|>createRelative "$batch"
 
   let requestMethod=function
         |List _ ->"GET"
@@ -52,12 +53,15 @@ module Uri=
         |Read _ ->"GET"
         |Delete _ ->"DELETE"
         |Metadata _ ->"GET"
+        |Batch _->"POST"
 
   let createWebRequest baseUri request=
       let uri=baseUri|>formUri request
       let r=WebRequest.CreateHttp(uri)
       r.Method<-requestMethod request
+
       r
+  
 
 
   

@@ -52,7 +52,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Builder.fs" />
+    <Compile Include="CoreTypes.fs" />
     <Compile Include="Uri.fs" />
     <Compile Include="HttpRequest.fs" />
     <Compile Include="Types.fs" />

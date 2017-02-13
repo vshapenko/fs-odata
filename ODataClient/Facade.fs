@@ -7,6 +7,8 @@ open System.IO
 open System.Net
 open System
 module Facade=
+  type ObjectProperty={Name:string;Value:obj}
+  type ObjectInfo={ObjectType:string;Properties:ObjectProperty list}
 
   type ParserSettings<'TOutput,'TInput,'TMetadata>( ResponseHandler:Func<Stream,'TOutput seq>,
                                                     WebExceptionHandler:Action<WebException>,
@@ -21,14 +23,16 @@ module Facade=
        member this.FatalExceptionHandler with get()=getAction FatalExceptionHandler
        member this.InputEntryHandler with get()=getFunc InputEntryHandler
        member this.MetadataHandler with get()=getFunc MetadataHandler
-
+  type Key={Name:string;Value:obj}
   type PullSettings={Collection:string;Filter:string;Skip:string;Top:string}
 
   type IODataClient<'TOutput,'TInput,'TMetadata>=
-      abstract member GetEntries:PullSettings->seq<'TOutput>
+      abstract member Read:Key->'TOutput
+      abstract member List:unit->seq<'TOutput>
       abstract member GetMetadata:unit->seq<'TMetadata>
       abstract member ClearMetadata:unit->unit
-      abstract member WriteEntries :seq<'TInput>->unit
+      abstract member Update :'TInput->unit
+
 
   type private ODataClient<'TOutput,'TInput,'TMetadata>(settings:ODataSettings,parserSettings:ParserSettings<'TOutput,'TInput,'TMetadata>)=
     
@@ -40,18 +44,7 @@ module Facade=
 
 
 
-    interface IODataClient<'TOutput,'TInput,'TMetadata> with
-      member this.GetEntries settings=match get()
-                                             with
-                                            |None->Seq.empty
-                                            |Some l ->l
 
-      member this.GetMetadata()=match OData.GetMetadata settings parserSettings.WebExceptionHandler parserSettings.FatalExceptionHandler  with
-                                |None->Seq.empty 
-                                |Some m->parserSettings.MetadataHandler(m)
-                                 
-      member this.ClearMetadata()=Metadata.removeFromCache settings.Uri|>ignore
-      member this.WriteEntries(data)=data|>Seq.iter(fun d->post d|>ignore)
 
   let CreateClient<'TOutput,'TInput,'TMetadata> settings parserSettings=ODataClient(settings,parserSettings):>IODataClient<'TOutput,'TInput,'TMetadata>
 
